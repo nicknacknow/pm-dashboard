@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polymarket Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Chakra+Petch:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+/* ─── Reset & tokens ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #07090e;
+  --surf0:    #0d1117;
+  --surf1:    #131920;
+  --surf2:    #192028;
+  --border:   #1e2a36;
+  --border2:  #243040;
+  --text:     #c9d5e0;
+  --text-dim: #4a5a6a;
+  --text-mid: #7a90a0;
+  --buy:      #00e676;
+  --sell:     #ff3d5a;
+  --buy-bg:   rgba(0,230,118,.08);
+  --sell-bg:  rgba(255,61,90,.08);
+  --buy-dim:  rgba(0,230,118,.18);
+  --sell-dim: rgba(255,61,90,.18);
+  --whale:    #f5a623;
+  --whale-bg: rgba(245,166,35,.10);
+  --accent:   #4fa8e0;
+  --mono:     'IBM Plex Mono', monospace;
+  --display:  'Chakra Petch', sans-serif;
+  --radius:   4px;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  overflow: hidden;
+}
+
+/* ─── Layout ─────────────────────────────────────────────────── */
+#app {
+  display: grid;
+  grid-template-rows: 52px 1fr;
+  grid-template-columns: 340px 1fr;
+  height: 100vh;
+  gap: 0;
+}
+
+/* ─── Header ─────────────────────────────────────────────────── */
+#header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 20px;
+  background: var(--surf0);
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  z-index: 10;
+}
+
+#logo {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: .05em;
+  color: #fff;
+  white-space: nowrap;
+  margin-right: 4px;
+}
+
+#logo span { color: var(--buy); }
+
+.stat-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.stat-label {
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  font-family: var(--display);
+}
+.stat-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  transition: color .3s;
+}
+.stat-value.up { color: var(--buy); }
+.stat-value.down { color: var(--sell); }
+
+#status-area {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#conn-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--display);
+  font-size: 11px;
+  letter-spacing: .05em;
+  color: var(--text-dim);
+}
+.conn-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition: background .3s;
+}
+.conn-dot.live { background: var(--buy); animation: pulse 2s infinite; }
+.conn-dot.dead { background: var(--sell); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .3; }
+}
+
+#pause-btn {
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  padding: 5px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border2);
+  background: var(--surf2);
+  color: var(--text);
+  cursor: pointer;
+  transition: all .15s;
+  user-select: none;
+}
+#pause-btn:hover { border-color: var(--accent); color: var(--accent); }
+#pause-btn.paused { background: var(--whale-bg); border-color: var(--whale); color: var(--whale); }
+
+/* ─── Left panel: Markets ─────────────────────────────────────── */
+#panel-left {
+  background: var(--surf0);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.panel-title {
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+}
+.panel-count {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+#sort-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.sort-tab {
+  font-family: var(--display);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  padding: 3px 8px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  color: var(--text-dim);
+  background: transparent;
+  transition: all .15s;
+}
+.sort-tab:hover { color: var(--text); }
+.sort-tab.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(79,168,224,.08);
+}
+
+#token-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+#token-list::-webkit-scrollbar { width: 4px; }
+#token-list::-webkit-scrollbar-track { background: transparent; }
+#token-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.token-row {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background .12s;
+  position: relative;
+}
+.token-row:hover { background: var(--surf1); }
+.token-row.selected { background: var(--surf2); }
+.token-row.selected::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--accent);
+}
+
+.token-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.token-id {
+  font-size: 12px;
+  color: var(--text);
+  letter-spacing: .02em;
+}
+.token-vol {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.pressure-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surf2);
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.pressure-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--buy) var(--buy-pct), var(--sell) var(--buy-pct));
+  transition: all .4s ease;
+  border-radius: 2px;
+}
+
+.token-meta {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+.token-buy  { color: var(--buy); }
+.token-sell { color: var(--sell); }
+.token-cnt  { color: var(--text-dim); }
+
+/* ─── Right panel ─────────────────────────────────────────────── */
+#panel-right {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* ─── Filters bar ─────────────────────────────────────────────── */
+#filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--surf0);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.toggle-group {
+  display: flex;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.toggle-btn {
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  padding: 4px 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all .12s;
+}
+.toggle-btn + .toggle-btn { border-left: 1px solid var(--border2); }
+.toggle-btn.active { color: #fff; }
+.toggle-btn[data-val="ALL"].active  { background: rgba(79,168,224,.2); color: var(--accent); }
+.toggle-btn[data-val="BUY"].active  { background: var(--buy-bg); color: var(--buy); }
+.toggle-btn[data-val="SELL"].active { background: var(--sell-bg); color: var(--sell); }
+
+.filter-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surf1);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 0 8px;
+  height: 26px;
+}
+.filter-label {
+  font-family: var(--display);
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.filter-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  width: 80px;
+}
+.filter-input::placeholder { color: var(--text-dim); }
+.filter-input:focus + .filter-label,
+.filter-input:focus { border-color: var(--accent); }
+.filter-input[type=number] { width: 64px; }
+
+#filters-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.badge-count {
+  font-family: var(--display);
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--surf2);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+
+/* ─── Trade feed column headers ───────────────────────────────── */
+#feed-header {
+  display: grid;
+  grid-template-columns: 48px 52px 88px 100px 90px 80px 1fr;
+  gap: 0;
+  padding: 5px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surf0);
+}
+.feed-col-label {
+  font-family: var(--display);
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+  transition: color .12s;
+}
+.feed-col-label:hover { color: var(--text-mid); }
+.feed-col-label.sort-active { color: var(--accent); }
+.feed-col-label.right { text-align: right; }
+
+/* ─── Feed ────────────────────────────────────────────────────── */
+#feed {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  contain: strict;
+}
+#feed::-webkit-scrollbar { width: 4px; }
+#feed::-webkit-scrollbar-track { background: transparent; }
+#feed::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.trade-row {
+  display: grid;
+  grid-template-columns: 48px 52px 88px 100px 90px 80px 1fr;
+  gap: 0;
+  padding: 6px 14px;
+  border-bottom: 1px solid rgba(30,42,54,.6);
+  align-items: center;
+  animation: rowIn .18s ease both;
+  cursor: default;
+  transition: background .1s;
+}
+.trade-row:hover { background: var(--surf1); }
+.trade-row.is-buy  { animation: rowIn .18s ease both, flashBuy .6s ease both; }
+.trade-row.is-sell { animation: rowIn .18s ease both, flashSell .6s ease both; }
+.trade-row.is-whale { border-left: 2px solid var(--whale); padding-left: 12px; }
+
+@keyframes rowIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes flashBuy {
+  0%   { background: var(--buy-dim); }
+  100% { background: transparent; }
+}
+@keyframes flashSell {
+  0%   { background: var(--sell-dim); }
+  100% { background: transparent; }
+}
+
+.trade-age {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.trade-age.fresh { color: var(--text-mid); }
+
+.trade-side-badge {
+  font-family: var(--display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  display: inline-block;
+  text-align: center;
+  width: 42px;
+}
+.side-buy  { background: var(--buy-bg);  color: var(--buy);  border: 1px solid rgba(0,230,118,.25); }
+.side-sell { background: var(--sell-bg); color: var(--sell); border: 1px solid rgba(255,61,90,.25); }
+
+.trade-token {
+  font-size: 11px;
+  color: var(--text-mid);
+  letter-spacing: .01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.trade-token:hover { color: var(--accent); text-decoration: underline; }
+
+.trade-usdc {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.trade-usdc.buy  { color: var(--buy); }
+.trade-usdc.sell { color: var(--sell); }
+.trade-usdc .whale-icon { margin-right: 3px; font-size: 11px; }
+
+.trade-tokens {
+  font-size: 12px;
+  color: var(--text-mid);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.trade-price {
+  font-size: 12px;
+  color: var(--text);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.trade-wallet {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color .12s;
+}
+.trade-wallet:hover { color: var(--accent); }
+
+/* ─── Empty state ─────────────────────────────────────────────── */
+#feed-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 10px;
+  color: var(--text-dim);
+}
+#feed-empty .spinner {
+  width: 24px; height: 24px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#feed-empty p { font-family: var(--display); font-size: 12px; letter-spacing: .08em; }
+
+/* ─── Pause overlay ───────────────────────────────────────────── */
+#pause-overlay {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--display);
+  font-size: 11px;
+  letter-spacing: .1em;
+  color: var(--whale);
+  background: var(--whale-bg);
+  border: 1px solid var(--whale);
+  padding: 6px 14px;
+  border-radius: 20px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ─── Whale alerts ────────────────────────────────────────────── */
+#whale-alerts {
+  position: fixed;
+  top: 60px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.whale-toast {
+  background: var(--surf0);
+  border: 1px solid var(--whale);
+  border-left: 3px solid var(--whale);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  min-width: 260px;
+  animation: toastIn .25s ease, toastOut .25s ease 3.75s forwards;
+  pointer-events: auto;
+}
+.whale-toast-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.whale-toast-head .wh-icon { font-size: 14px; }
+.whale-toast-head .wh-label {
+  font-family: var(--display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  color: var(--whale);
+}
+.whale-toast-head .wh-side {
+  font-family: var(--display);
+  font-size: 10px;
+  font-weight: 700;
+  margin-left: auto;
+}
+.wh-side.buy  { color: var(--buy); }
+.wh-side.sell { color: var(--sell); }
+.whale-toast-body {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.whale-toast-meta {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes toastOut {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(30px); }
+}
+
+/* ─── Scrollbars ──────────────────────────────────────────────── */
+* { scrollbar-width: thin; scrollbar-color: var(--border2) transparent; }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ─── Header ──────────────────────────────────────────────── -->
+  <header id="header">
+    <div id="logo">POLY<span>FLOW</span></div>
+
+    <div class="stat-pill">
+      <span class="stat-label">Trades/min</span>
+      <span class="stat-value" id="stat-tpm">—</span>
+    </div>
+    <div class="stat-pill">
+      <span class="stat-label">Volume</span>
+      <span class="stat-value" id="stat-vol">$0</span>
+    </div>
+    <div class="stat-pill">
+      <span class="stat-label">Buy pressure</span>
+      <span class="stat-value" id="stat-buypct">—</span>
+    </div>
+    <div class="stat-pill">
+      <span class="stat-label">Avg size</span>
+      <span class="stat-value" id="stat-avg">$0</span>
+    </div>
+    <div class="stat-pill">
+      <span class="stat-label">Markets</span>
+      <span class="stat-value" id="stat-markets">0</span>
+    </div>
+
+    <div id="status-area">
+      <div id="conn-badge">
+        <div class="conn-dot" id="conn-dot"></div>
+        <span id="conn-text">CONNECTING</span>
+      </div>
+      <button id="pause-btn">⏸ PAUSE</button>
+    </div>
+  </header>
+
+  <!-- ─── Left: Markets board ──────────────────────────────────── -->
+  <aside id="panel-left">
+    <div class="panel-header">
+      <span class="panel-title">Markets</span>
+      <span class="panel-count" id="market-count">0 active</span>
+    </div>
+    <div id="sort-tabs">
+      <button class="sort-tab active" data-sort="vol">Volume</button>
+      <button class="sort-tab" data-sort="count">Trades</button>
+      <button class="sort-tab" data-sort="buypct">Buy%</button>
+      <button class="sort-tab" data-sort="recent">Recent</button>
+    </div>
+    <div id="token-list"></div>
+  </aside>
+
+  <!-- ─── Right: Live feed ──────────────────────────────────────── -->
+  <section id="panel-right">
+    <div id="filters">
+      <div class="toggle-group">
+        <button class="toggle-btn active" data-val="ALL">ALL</button>
+        <button class="toggle-btn" data-val="BUY">BUY</button>
+        <button class="toggle-btn" data-val="SELL">SELL</button>
+      </div>
+
+      <div class="filter-field">
+        <span class="filter-label">Min $</span>
+        <input class="filter-input" id="filter-min" type="number" placeholder="0" min="0" value="">
+      </div>
+
+      <div class="filter-field">
+        <span class="filter-label">Token</span>
+        <input class="filter-input" id="filter-token" type="text" placeholder="search…" style="width:110px">
+      </div>
+
+      <div class="filter-field">
+        <span class="filter-label">Wallet</span>
+        <input class="filter-input" id="filter-wallet" type="text" placeholder="search…" style="width:110px">
+      </div>
+
+      <div id="filters-right">
+        <span class="badge-count" id="feed-count">0 trades</span>
+      </div>
+    </div>
+
+    <div id="feed-header">
+      <span class="feed-col-label">AGE</span>
+      <span class="feed-col-label">SIDE</span>
+      <span class="feed-col-label">TOKEN</span>
+      <span class="feed-col-label right sort-active" data-col="usdc">USDC ↓</span>
+      <span class="feed-col-label right" data-col="tokens">TOKENS</span>
+      <span class="feed-col-label right" data-col="price">PRICE</span>
+      <span class="feed-col-label right">WALLET</span>
+    </div>
+
+    <div id="feed" style="position:relative">
+      <div id="feed-empty">
+        <div class="spinner"></div>
+        <p>WAITING FOR TRADES</p>
+      </div>
+    </div>
+    <div id="pause-overlay">⏸ FEED PAUSED</div>
+  </section>
+
+</div>
+
+<!-- ─── Whale alerts container ──────────────────────────────────── -->
+<div id="whale-alerts"></div>
+
+<script>
+'use strict';
+
+// ─── Config ──────────────────────────────────────────────────────
+const MAX_FEED_ROWS   = 250;   // max DOM rows in live feed
+const MAX_ALL_TRADES  = 2000;  // in-memory store
+const WHALE_THRESHOLD = 500;   // USDC to trigger whale alert
+const MARKET_TOP_N    = 40;    // max tokens shown in left panel
+const AGE_UPDATE_MS   = 1000;  // how often to refresh age labels
+const STATS_UPDATE_MS = 800;   // stats bar refresh rate
+
+// ─── State ───────────────────────────────────────────────────────
+let allTrades    = [];  // ring buffer of all received trades
+let filteredRows = [];  // currently visible trade rows
+let tokenMap     = {};  // token_id → aggregated stats
+let paused       = false;
+let filterSide   = 'ALL';
+let filterMin    = 0;
+let filterToken  = '';
+let filterWallet = '';
+let sortBy       = 'vol';     // left panel sort
+let feedSort     = 'usdc';    // feed sort column (unused currently, newest-first default)
+let selectedToken = null;     // token filter from left panel click
+
+// Rolling window for trades/min calc
+let tradeTimestamps = [];
+
+// Stats accumulators (since page load)
+let totalVol   = 0;
+let totalBuys  = 0;
+let totalSells = 0;
+
+// ─── DOM refs ────────────────────────────────────────────────────
+const feedEl      = document.getElementById('feed');
+const feedEmpty   = document.getElementById('feed-empty');
+const tokenList   = document.getElementById('token-list');
+const connDot     = document.getElementById('conn-dot');
+const connText    = document.getElementById('conn-text');
+const pauseBtn    = document.getElementById('pause-btn');
+const pauseOvl    = document.getElementById('pause-overlay');
+const whaleArea   = document.getElementById('whale-alerts');
+const feedCount   = document.getElementById('feed-count');
+const marketCount = document.getElementById('market-count');
+
+const statTpm     = document.getElementById('stat-tpm');
+const statVol     = document.getElementById('stat-vol');
+const statBuypct  = document.getElementById('stat-buypct');
+const statAvg     = document.getElementById('stat-avg');
+const statMarkets = document.getElementById('stat-markets');
+
+// ─── Utilities ───────────────────────────────────────────────────
+function fmtUSDC(v) {
+  if (v >= 1e6) return '$' + (v/1e6).toFixed(2) + 'M';
+  if (v >= 1e3) return '$' + (v/1e3).toFixed(1) + 'K';
+  return '$' + v.toFixed(2);
+}
+function fmtTokens(v) {
+  if (v >= 1e6) return (v/1e6).toFixed(2) + 'M';
+  if (v >= 1e3) return (v/1e3).toFixed(1) + 'K';
+  return v.toFixed(2);
+}
+function fmtPrice(v) { return '$' + v.toFixed(4); }
+function fmtAge(serverTs) {
+  const s = Math.floor((Date.now()/1000) - serverTs);
+  if (s < 60)  return s + 's';
+  if (s < 3600) return Math.floor(s/60) + 'm';
+  return Math.floor(s/3600) + 'h';
+}
+function shortId(id, head=6, tail=4) {
+  if (!id || id.length <= head + tail + 2) return id;
+  return id.slice(0, head) + '…' + id.slice(-tail);
+}
+function shortWallet(w) {
+  if (!w || w.length < 12) return w;
+  return w.slice(0, 6) + '…' + w.slice(-4);
+}
+
+// ─── WebSocket ───────────────────────────────────────────────────
+let ws, reconnectTimer;
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws`);
+
+  ws.onopen = () => {
+    connDot.className = 'conn-dot live';
+    connText.textContent = 'LIVE';
+  };
+
+  ws.onmessage = e => {
+    let trade;
+    try { trade = JSON.parse(e.data); } catch { return; }
+    onTrade(trade);
+  };
+
+  ws.onclose = ws.onerror = () => {
+    connDot.className = 'conn-dot dead';
+    connText.textContent = 'OFFLINE';
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(connect, 2500);
+  };
+
+  // Keepalive ping
+  setInterval(() => { if (ws.readyState === 1) ws.send('ping'); }, 20000);
+}
+connect();
+
+// ─── Incoming trade handler ────────────────────────────────────
+let pendingTrades = [];  // batch for rAF
+let rafPending = false;
+
+function onTrade(trade) {
+  // Accumulate stats
+  totalVol += trade.total_usdc;
+  if (trade.side === 'BUY') totalBuys++; else totalSells++;
+  tradeTimestamps.push(Date.now());
+
+  // Update token map
+  let tk = tokenMap[trade.token_id];
+  if (!tk) {
+    tk = { id: trade.token_id, vol: 0, buyVol: 0, sellVol: 0, count: 0, lastTs: 0, lastPrice: 0 };
+    tokenMap[trade.token_id] = tk;
+  }
+  tk.vol      += trade.total_usdc;
+  tk.count    += 1;
+  tk.lastTs    = trade.server_ts || Date.now()/1000;
+  tk.lastPrice = trade.price;
+  if (trade.side === 'BUY')  tk.buyVol  += trade.total_usdc;
+  else                        tk.sellVol += trade.total_usdc;
+
+  // Store trade
+  allTrades.unshift(trade);
+  if (allTrades.length > MAX_ALL_TRADES) allTrades.length = MAX_ALL_TRADES;
+
+  // Whale alert
+  if (trade.total_usdc >= WHALE_THRESHOLD) showWhaleAlert(trade);
+
+  // Queue DOM update
+  if (!paused) {
+    pendingTrades.unshift(trade);
+    if (!rafPending) {
+      rafPending = true;
+      requestAnimationFrame(flushTrades);
+    }
+  }
+}
+
+// ─── Batch DOM updates ────────────────────────────────────────
+function flushTrades() {
+  rafPending = false;
+  if (!pendingTrades.length) return;
+
+  const trades = pendingTrades.splice(0);  // take all pending
+  let added = 0;
+
+  for (const trade of trades) {
+    if (!passesFilter(trade)) continue;
+    const el = buildTradeRow(trade);
+    if (feedEmpty.style.display !== 'none') feedEmpty.style.display = 'none';
+    feedEl.insertBefore(el, feedEl.firstChild);
+    added++;
+  }
+
+  // Evict overflow rows
+  while (feedEl.children.length > MAX_FEED_ROWS + 1) {
+    feedEl.removeChild(feedEl.lastChild);
+  }
+
+  if (added) {
+    const cnt = feedEl.querySelectorAll('.trade-row').length;
+    feedCount.textContent = cnt + ' trades';
+  }
+}
+
+// ─── Filter logic ─────────────────────────────────────────────
+function passesFilter(trade) {
+  if (filterSide !== 'ALL' && trade.side !== filterSide) return false;
+  if (filterMin > 0 && trade.total_usdc < filterMin)    return false;
+  if (selectedToken && trade.token_id !== selectedToken) return false;
+  if (filterToken && !trade.token_id.includes(filterToken)) return false;
+  if (filterWallet && !trade.wallet.toLowerCase().includes(filterWallet.toLowerCase())) return false;
+  return true;
+}
+
+function rebuildFeed() {
+  // Remove all trade rows
+  const rows = feedEl.querySelectorAll('.trade-row');
+  rows.forEach(r => r.remove());
+
+  const matching = allTrades.filter(passesFilter).slice(0, MAX_FEED_ROWS);
+  if (matching.length === 0) {
+    feedEmpty.style.display = '';
+    feedCount.textContent = '0 trades';
+    return;
+  }
+  feedEmpty.style.display = 'none';
+
+  const frag = document.createDocumentFragment();
+  for (const t of matching) frag.appendChild(buildTradeRow(t, true));
+  feedEl.insertBefore(frag, feedEl.firstChild);
+  feedCount.textContent = matching.length + ' trades';
+}
+
+// ─── Build a single trade row ─────────────────────────────────
+function buildTradeRow(trade, noAnim=false) {
+  const isBuy   = trade.side === 'BUY';
+  const isWhale = trade.total_usdc >= WHALE_THRESHOLD;
+  const age     = trade.server_ts ? fmtAge(trade.server_ts) : '—';
+  const fresh   = trade.server_ts && (Date.now()/1000 - trade.server_ts) < 3;
+
+  const row = document.createElement('div');
+  row.className = `trade-row ${isBuy ? 'is-buy' : 'is-sell'}${isWhale ? ' is-whale' : ''}${noAnim ? ' no-anim' : ''}`;
+  if (noAnim) row.style.animation = 'none';
+  row.dataset.ts     = trade.server_ts || 0;
+  row.dataset.wallet = trade.wallet;
+  row.dataset.token  = trade.token_id;
+
+  row.innerHTML = `
+    <span class="trade-age${fresh ? ' fresh' : ''}" data-ts="${trade.server_ts||0}">${age}</span>
+    <span class="trade-side-badge ${isBuy ? 'side-buy' : 'side-sell'}">${trade.side}</span>
+    <span class="trade-token" title="${trade.token_id}" data-token="${trade.token_id}">${shortId(trade.token_id)}</span>
+    <span class="trade-usdc ${isBuy ? 'buy' : 'sell'}">${isWhale ? '<span class="whale-icon">🐋</span>' : ''}${fmtUSDC(trade.total_usdc)}</span>
+    <span class="trade-tokens">${fmtTokens(trade.tokens)}</span>
+    <span class="trade-price">${fmtPrice(trade.price)}</span>
+    <span class="trade-wallet" title="${trade.wallet}" data-wallet="${trade.wallet}">${shortWallet(trade.wallet)}</span>
+  `;
+
+  // Token click → filter
+  row.querySelector('.trade-token').addEventListener('click', e => {
+    e.stopPropagation();
+    const tid = e.target.dataset.token;
+    if (selectedToken === tid) {
+      selectedToken = null;
+      document.querySelectorAll('.token-row').forEach(r => r.classList.remove('selected'));
+    } else {
+      selectedToken = tid;
+      document.querySelectorAll('.token-row').forEach(r => {
+        r.classList.toggle('selected', r.dataset.id === tid);
+      });
+    }
+    rebuildFeed();
+  });
+
+  return row;
+}
+
+// ─── Age ticker ───────────────────────────────────────────────
+setInterval(() => {
+  const ageEls = feedEl.querySelectorAll('.trade-age[data-ts]');
+  for (const el of ageEls) {
+    const ts = parseFloat(el.dataset.ts);
+    if (!ts) continue;
+    const age = fmtAge(ts);
+    if (el.textContent !== age) el.textContent = age;
+    const fresh = (Date.now()/1000 - ts) < 3;
+    el.classList.toggle('fresh', fresh);
+  }
+}, AGE_UPDATE_MS);
+
+// ─── Stats updater ────────────────────────────────────────────
+setInterval(() => {
+  const now = Date.now();
+  // Prune timestamps older than 60s
+  const cutoff = now - 60000;
+  while (tradeTimestamps.length && tradeTimestamps[0] < cutoff) tradeTimestamps.shift();
+
+  const tpm = tradeTimestamps.length;
+  statTpm.textContent = tpm;
+  statVol.textContent = fmtUSDC(totalVol);
+
+  const total = totalBuys + totalSells;
+  if (total > 0) {
+    const bp = Math.round(totalBuys / total * 100);
+    statBuypct.textContent = bp + '%';
+    statBuypct.className = 'stat-value ' + (bp > 55 ? 'up' : bp < 45 ? 'down' : '');
+  }
+
+  const avgSize = total > 0 ? totalVol / total : 0;
+  statAvg.textContent = fmtUSDC(avgSize);
+
+  const nMarkets = Object.keys(tokenMap).length;
+  statMarkets.textContent = nMarkets;
+}, STATS_UPDATE_MS);
+
+// ─── Token board renderer ────────────────────────────────────
+let tokenRenderPending = false;
+function scheduleTokenRender() {
+  if (tokenRenderPending) return;
+  tokenRenderPending = true;
+  setTimeout(renderTokenBoard, 400);
+}
+
+function renderTokenBoard() {
+  tokenRenderPending = false;
+  let tokens = Object.values(tokenMap);
+
+  // Sort
+  if (sortBy === 'vol')    tokens.sort((a,b) => b.vol - a.vol);
+  if (sortBy === 'count')  tokens.sort((a,b) => b.count - a.count);
+  if (sortBy === 'buypct') tokens.sort((a,b) => (b.buyVol/b.vol) - (a.buyVol/a.vol));
+  if (sortBy === 'recent') tokens.sort((a,b) => b.lastTs - a.lastTs);
+
+  tokens = tokens.slice(0, MARKET_TOP_N);
+  marketCount.textContent = Object.keys(tokenMap).length + ' active';
+
+  // Diff render
+  const existingRows = {};
+  tokenList.querySelectorAll('.token-row').forEach(r => { existingRows[r.dataset.id] = r; });
+
+  const frag = document.createDocumentFragment();
+  tokens.forEach((tk, i) => {
+    let row = existingRows[tk.id];
+    const buyPct = tk.vol > 0 ? Math.round(tk.buyVol / tk.vol * 100) : 50;
+
+    if (!row) {
+      row = document.createElement('div');
+      row.className = 'token-row';
+      row.dataset.id = tk.id;
+      row.innerHTML = `
+        <div class="token-top">
+          <span class="token-id">${shortId(tk.id, 8, 4)}</span>
+          <span class="token-vol"></span>
+        </div>
+        <div class="pressure-bar"><div class="pressure-fill"></div></div>
+        <div class="token-meta">
+          <span class="token-buy"></span>
+          <span class="token-cnt"></span>
+          <span class="token-sell"></span>
+        </div>
+      `;
+      row.addEventListener('click', () => {
+        if (selectedToken === tk.id) {
+          selectedToken = null;
+          row.classList.remove('selected');
+        } else {
+          document.querySelectorAll('.token-row').forEach(r => r.classList.remove('selected'));
+          selectedToken = tk.id;
+          row.classList.add('selected');
+        }
+        rebuildFeed();
+      });
+    }
+
+    // Update values
+    row.querySelector('.token-vol').textContent  = fmtUSDC(tk.vol);
+    row.querySelector('.token-buy').textContent  = '▲ ' + fmtUSDC(tk.buyVol);
+    row.querySelector('.token-sell').textContent = '▼ ' + fmtUSDC(tk.sellVol);
+    row.querySelector('.token-cnt').textContent  = tk.count + ' trades';
+    row.querySelector('.pressure-fill').style.setProperty('--buy-pct', buyPct + '%');
+    row.querySelector('.pressure-fill').style.background =
+      `linear-gradient(90deg, var(--buy) ${buyPct}%, var(--sell) ${buyPct}%)`;
+
+    if (selectedToken === tk.id) row.classList.add('selected');
+    delete existingRows[tk.id];
+    frag.appendChild(row);
+  });
+
+  // Remove stale rows
+  Object.values(existingRows).forEach(r => r.remove());
+  tokenList.appendChild(frag);
+}
+
+// Trigger token board refresh on every trade (throttled)
+const origOnTrade = onTrade;
+window._onTradeOrig = onTrade;
+
+// Wrap onTrade to also schedule token board
+const _onTrade = onTrade;
+function onTradeWrapped(trade) {
+  _onTrade(trade);
+  scheduleTokenRender();
+}
+
+// Re-assign (JS closures mean we patch the ws handler)
+ws.onmessage = e => {
+  let trade;
+  try { trade = JSON.parse(e.data); } catch { return; }
+  onTradeWrapped(trade);
+};
+
+// Also patch future reconnects
+const _connect = connect;
+
+// ─── Whale alert ─────────────────────────────────────────────
+function showWhaleAlert(trade) {
+  const isBuy = trade.side === 'BUY';
+  const toast = document.createElement('div');
+  toast.className = 'whale-toast';
+  toast.innerHTML = `
+    <div class="whale-toast-head">
+      <span class="wh-icon">🐋</span>
+      <span class="wh-label">WHALE ALERT</span>
+      <span class="wh-side ${isBuy ? 'buy' : 'sell'}">${trade.side}</span>
+    </div>
+    <div class="whale-toast-body">${fmtUSDC(trade.total_usdc)}</div>
+    <div class="whale-toast-meta">${shortId(trade.token_id)} · ${shortWallet(trade.wallet)}</div>
+  `;
+  whaleArea.appendChild(toast);
+  setTimeout(() => toast.remove(), 4200);
+}
+
+// ─── Pause ───────────────────────────────────────────────────
+pauseBtn.addEventListener('click', () => {
+  paused = !paused;
+  pauseBtn.classList.toggle('paused', paused);
+  pauseBtn.textContent = paused ? '▶ RESUME' : '⏸ PAUSE';
+
+  if (!paused) {
+    // Flush any trades that came in while paused
+    rebuildFeed();
+    pendingTrades = [];
+  }
+});
+
+// ─── Sort tabs (left panel) ───────────────────────────────────
+document.getElementById('sort-tabs').addEventListener('click', e => {
+  const tab = e.target.closest('.sort-tab');
+  if (!tab) return;
+  document.querySelectorAll('.sort-tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  sortBy = tab.dataset.sort;
+  renderTokenBoard();
+});
+
+// ─── Filters ─────────────────────────────────────────────────
+document.querySelector('.toggle-group').addEventListener('click', e => {
+  const btn = e.target.closest('.toggle-btn');
+  if (!btn) return;
+  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterSide = btn.dataset.val;
+  rebuildFeed();
+});
+
+let filterDebounce;
+function onFilterChange() {
+  clearTimeout(filterDebounce);
+  filterDebounce = setTimeout(rebuildFeed, 200);
+}
+
+document.getElementById('filter-min').addEventListener('input', e => {
+  filterMin = parseFloat(e.target.value) || 0;
+  onFilterChange();
+});
+document.getElementById('filter-token').addEventListener('input', e => {
+  filterToken = e.target.value.trim();
+  selectedToken = null;
+  document.querySelectorAll('.token-row').forEach(r => r.classList.remove('selected'));
+  onFilterChange();
+});
+document.getElementById('filter-wallet').addEventListener('input', e => {
+  filterWallet = e.target.value.trim();
+  onFilterChange();
+});
+
+// ─── Feed column header clicks (copy/filter) ─────────────────
+// (future: click to sort feed by that column)
+
+// ─── Reconnect: re-patch ws.onmessage ────────────────────────
+// Override connect to patch the message handler each time
+const _origConnect = connect;
+window.connectAndPatch = function() {
+  _origConnect();
+  // ws is re-assigned by _origConnect
+  setTimeout(() => {
+    if (ws) {
+      ws.onmessage = e => {
+        let trade;
+        try { trade = JSON.parse(e.data); } catch { return; }
+        onTradeWrapped(trade);
+      };
+      ws.onclose = ws.onerror = () => {
+        connDot.className = 'conn-dot dead';
+        connText.textContent = 'OFFLINE';
+        clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(window.connectAndPatch, 2500);
+      };
+    }
+  }, 50);
+};
+
+// Rewrite the WS close handler to use patched reconnect
+ws.onclose = ws.onerror = () => {
+  connDot.className = 'conn-dot dead';
+  connText.textContent = 'OFFLINE';
+  clearTimeout(reconnectTimer);
+  reconnectTimer = setTimeout(window.connectAndPatch, 2500);
+};
+
+// Patch current ws message handler
+ws.onmessage = e => {
+  let trade;
+  try { trade = JSON.parse(e.data); } catch { return; }
+  onTradeWrapped(trade);
+};
+
+console.log('%cPOLYFLOW', 'font-size:20px;font-weight:bold;color:#00e676;');
+console.log('Live trade dashboard ready.');
+</script>
+</body>
+</html>
