@@ -29,3 +29,7 @@ Open http://localhost:8008 in your browser.
 - `REDIS_URL` — Redis connection URL
 - `CHANNEL` — Redis pub/sub channel
 
+## TODO
+
+- Dockerize `pm-dashboard`
+- Load previous trades from the Postgres trade store
