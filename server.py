@@ -4,14 +4,11 @@ Serves the dashboard and streams live trades via WebSocket.
 
 Usage:
     uvicorn server:app --reload --port 8000
-    DEMO=1 uvicorn server:app --reload --port 8000   # fake trades, no Redis needed
 """
 
 import asyncio
 import json
 import os
-import random
-import string
 import time
 from asyncio import Queue
 from collections import deque
@@ -26,7 +23,6 @@ from fastapi.responses import FileResponse
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 CHANNEL = os.getenv("CHANNEL", "trades.raw")
-DEMO = os.getenv("DEMO", "0") == "1"
 REDIS_RETRY_DELAY = float(os.getenv("REDIS_RETRY_DELAY", "5"))
 REPLAY_BUFFER_SIZE = 60
 BASE_DIR = Path(__file__).resolve().parent
@@ -159,73 +155,12 @@ async def redis_listener() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Demo mode
-# ---------------------------------------------------------------------------
-
-_DEMO_TOKENS = [
-    "21742633143463906290569050155826241533067272736897614950488156847949938836455",
-    "52114319501245915516055106046884209969926127482827954674443846427813813222426",
-    "71321045679252212594626385532706912750332728571942532289631379312455583992563",
-    "88141047817977302126408973596697753695645015848954809082095777632820088264671",
-    "10000000000000000000000000000000000000000000000000000000000000000000000000001",
-    "10000000000000000000000000000000000000000000000000000000000000000000000000002",
-    "10000000000000000000000000000000000000000000000000000000000000000000000000003",
-]
-
-
-def _rand_hex(n: int) -> str:
-    return "0x" + "".join(random.choices(string.hexdigits[:16], k=n))
-
-
-def _make_demo_trade() -> dict:
-    is_buy = random.random() > 0.42
-    usdc_raw = max(0.01, random.lognormvariate(3.5, 1.8))
-    price = random.uniform(0.05, 0.97)
-    tokens = usdc_raw / price
-    usdc_micro = int(usdc_raw * 1_000_000)
-    tokens_micro = int(tokens * 1_000_000)
-
-    if is_buy:
-        maker, taker = usdc_micro, tokens_micro
-    else:
-        maker, taker = tokens_micro, usdc_micro
-
-    return {
-        "wallet": _rand_hex(40),
-        "token_id": random.choice(_DEMO_TOKENS),
-        "side": "0" if is_buy else "1",
-        "maker_amount": str(maker),
-        "taker_amount": str(taker),
-        "transaction_hash": _rand_hex(64),
-        "block_number": str(random.randint(60_000_000, 70_000_000)),
-        "timestamp": str(int(time.time())),
-    }
-
-
-async def demo_listener() -> None:
-    print("[demo] generating fake trades — no Redis needed")
-    while True:
-        batch = random.randint(1, 8)
-        for _ in range(batch):
-            raw = _make_demo_trade()
-            try:
-                formatted = format_trade(raw)
-            except Exception:
-                continue
-            msg = json.dumps(formatted)
-            replay_buffer.append(msg)
-            await broadcast(msg)
-        await asyncio.sleep(random.uniform(0.2, 0.6))
-
-
-# ---------------------------------------------------------------------------
 # FastAPI app
 # ---------------------------------------------------------------------------
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    listener = demo_listener if DEMO else redis_listener
-    task = asyncio.create_task(listener())
+    task = asyncio.create_task(redis_listener())
     yield
     task.cancel()
     try:

@@ -19,20 +19,13 @@ pip install -r requirements.txt
 ## Run
 
 ```bash
-REDIS_URL=redis://localhost:6379/0 CHANNEL=trades.raw uvicorn server:app --host 0.0.0.0 --port 8000
+REDIS_URL=redis://localhost:6379/0 CHANNEL=trades.raw uvicorn server:app --port 8008
 ```
 
-Open http://localhost:8000 in your browser.
-
-## Optional demo mode
-
-```bash
-DEMO=1 uvicorn server:app --host 0.0.0.0 --port 8000
-```
+Open http://localhost:8008 in your browser.
 
 ## Environment variables
 
 - `REDIS_URL` — Redis connection URL
 - `CHANNEL` — Redis pub/sub channel
-- `DEMO` — set to `1` to use fake trades
 
