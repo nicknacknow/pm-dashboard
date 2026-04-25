@@ -33,3 +33,4 @@ Open http://localhost:8008 in your browser.
 
 - Dockerize `pm-dashboard`
 - Load previous trades from the Postgres trade store
+    - basically be able to load certain timeframe and see all historical trades between a time range.
