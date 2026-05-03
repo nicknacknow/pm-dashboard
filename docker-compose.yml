@@ -1,0 +1,21 @@
+services:
+  pm-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pm-dashboard
+    environment:
+      REDIS_URL: ${REDIS_URL:-redis://host.docker.internal:6379/0}
+      CHANNEL: ${CHANNEL:-trades.raw}
+    ports:
+      - "8008:8008"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    networks:
+      - pm-project
+
+networks:
+  pm-project:
+    external: true
+    name: pm-project
