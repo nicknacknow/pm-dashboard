@@ -7,6 +7,19 @@ Real-time dashboard for `pminspect` trade events over Redis pub/sub.
 - Python 3.12+
 - `pminspect` running and publishing to Redis at `redis://localhost:6379/0`
 
+## Docker Compose
+
+This branch can run the dashboard in Docker while still reading Redis from the host-published
+pminspect container.
+
+```bash
+docker network create pm-project
+cp .env.example .env
+docker compose up --build -d
+```
+
+Open http://localhost:8008 in your browser.
+
 ## Setup
 
 ```bash
